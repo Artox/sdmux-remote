@@ -1,0 +1,16 @@
+FROM golang AS build
+
+COPY . /work
+WORKDIR /work
+
+ARG GOOS=linux
+ARG GOARCH=
+ARG GOARM=
+RUN env GOOS=${GOOS} GOARCH=${GOARCH} GOARM=${GOARM} CGO_ENABLED=0 go build -a -installsuffix cgo -o sdr ./cmd/sdr
+
+FROM scratch
+
+COPY --from=build /work/sdr /start
+
+ENTRYPOINT ["/start"]
+CMD []

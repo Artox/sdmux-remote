@@ -67,12 +67,111 @@ steps:
   - env GOOS=linux GOARCH=arm GOARM=6 CGO_ENABLED=0 go build -a -installsuffix cgo -o bin/sdrd-linux-armv6l ./cmd/sdrd
   - env GOOS=linux GOARCH=arm GOARM=6 CGO_ENABLED=0 go build -a -installsuffix cgo -o bin/sdr-linux-armv6l ./cmd/sdr
 
-- name: binary-release
-  image: plugins/gitea-release
+- name: container-server-amd64
+  image: plugins/docker
+  depends_on:
+  - compile-amd64
+  settings:
+    repo: docker.home.jm0.eu/josua/sdmux-remote/sdrd
+    registry: docker.home.jm0.eu
+    dockerfile: docker/Dockerfile.server
+    auto_tag: true
+    auto_tag_suffix: amd64
+    custom_labels:
+    - arch=amd64
+    build_args:
+    - GOARCH=amd64
+- name: container-server-arm64
+  image: plugins/docker
+  depends_on:
+  - compile-arm64
+  settings:
+    repo: docker.home.jm0.eu/josua/sdmux-remote/sdrd
+    registry: docker.home.jm0.eu
+    dockerfile: docker/Dockerfile.server
+    auto_tag: true
+    auto_tag_suffix: arm64
+    custom_labels:
+    - arch=arm64v8
+    build_args:
+    - GOARCH=arm64
+- name: container-server-armv6l
+  image: plugins/docker
+  depends_on:
+  - compile-armv6l
+  settings:
+    repo: docker.home.jm0.eu/josua/sdmux-remote/sdrd
+    registry: docker.home.jm0.eu
+    dockerfile: docker/Dockerfile.server
+    auto_tag: true
+    auto_tag_suffix: armv6l
+    custom_labels:
+    - arch=arm32v6
+    build_args:
+    - GOARCH=arm
+    - GOARM=6
+
+- name: container-client-amd64
+  image: plugins/docker
+  depends_on:
+  - compile-amd64
+  settings:
+    repo: docker.home.jm0.eu/josua/sdmux-remote/sdr
+    registry: docker.home.jm0.eu
+    dockerfile: docker/Dockerfile.client
+    auto_tag: true
+    auto_tag_suffix: amd64
+    custom_labels:
+    - arch=amd64
+    build_args:
+    - GOARCH=amd64
+- name: container-client-arm64
+  image: plugins/docker
+  depends_on:
+  - compile-arm64
+  settings:
+    repo: docker.home.jm0.eu/josua/sdmux-remote/sdr
+    registry: docker.home.jm0.eu
+    dockerfile: docker/Dockerfile.client
+    auto_tag: true
+    auto_tag_suffix: arm64
+    custom_labels:
+    - arch=arm64v8
+    build_args:
+    - GOARCH=arm64
+- name: container-client-armv6l
+  image: plugins/docker
+  depends_on:
+  - compile-armv6l
+  settings:
+    repo: docker.home.jm0.eu/josua/sdmux-remote/sdr
+    registry: docker.home.jm0.eu
+    dockerfile: docker/Dockerfile.client
+    auto_tag: true
+    auto_tag_suffix: armv6l
+    custom_labels:
+    - arch=arm32v6
+    build_args:
+    - GOARCH=arm
+    - GOARM=6
+
+- name: checkpoint
+  image: hello-world
   depends_on:
   - compile-amd64
   - compile-arm64
   - compile-armv6l
+  - container-client-amd64
+  - container-client-arm64
+  - container-client-armv6l
+  - container-server-amd64
+  - container-server-arm64
+  - container-server-armv6l
+
+- name: binary-release
+  image: plugins/gitea-release
+  depends_on:
+  - checkpoint
   settings:
     api_key:
       from_secret: token
@@ -80,3 +179,27 @@ steps:
     files: bin/*
   when:
     event: tag
+
+- name: container-client-release
+  image: plugins/manifest
+  depends_on:
+  - checkpoint
+  settings:
+    auto_tag: true
+    spec: docker/client.tmpl
+    platforms:
+    - linux/amd64
+    - linux/arm/v6
+    - linux/arm64
+
+- name: container-server-release
+  image: plugins/manifest
+  depends_on:
+  - checkpoint
+  settings:
+    auto_tag: true
+    spec: docker/server.tmpl
+    platforms:
+    - linux/amd64
+    - linux/arm/v6
+    - linux/arm64

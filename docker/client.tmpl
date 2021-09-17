@@ -1,0 +1,25 @@
+image: docker.home.jm0.eu/josua/sdmux-remote/sdr:{{#if build.tag}}{{trimPrefix "v" build.tag}}{{else}}latest{{/if}}
+{{#if build.tags}}
+tags:
+{{#each build.tags}}
+  - {{this}}
+{{/each}}
+{{/if}}
+manifests:
+  -
+    image: docker.home.jm0.eu/josua/sdmux-remote/sdr:{{#if build.tag}}{{trimPrefix "v" build.tag}}-{{/if}}amd64
+    platform:
+      architecture: amd64
+      os: linux
+  -
+    image: docker.home.jm0.eu/josua/sdmux-remote/sdr:{{#if build.tag}}{{trimPrefix "v" build.tag}}-{{/if}}arm64
+    platform:
+      architecture: arm64
+      os: linux
+      variant: v8
+  -
+    image: docker.home.jm0.eu/josua/sdmux-remote/sdr:{{#if build.tag}}{{trimPrefix "v" build.tag}}-{{/if}}armv6l
+    platform:
+      architecture: arm
+      os: linux
+      variant: v6
