@@ -1,0 +1,82 @@
+---
+kind: pipeline
+type: docker
+name: compile
+
+platform:
+  os: linux
+  arch: arm64
+
+volumes:
+- name: cache
+  temp: {}
+
+steps:
+- name: dependencies
+  image: golang
+  depends_on:
+  - clone
+  volumes:
+  - name: cache
+    path: /go
+  commands:
+  - go get -d ./...
+
+- name: check
+  image: golang
+  depends_on:
+  - dependencies
+  volumes:
+  - name: cache
+    path: /go
+  commands:
+  - go install honnef.co/go/tools/cmd/staticcheck@latest
+  - go vet ./...
+  - staticcheck ./...
+
+- name: compile-amd64
+  image: golang
+  depends_on:
+  - check
+  volumes:
+  - name: cache
+    path: /go
+  commands:
+  - env GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -a -installsuffix cgo -o bin/sdrd-linux-amd64 ./cmd/sdrd
+  - env GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -a -installsuffix cgo -o bin/sdr-linux-amd64 ./cmd/sdr
+
+- name: compile-arm64
+  image: golang
+  depends_on:
+  - check
+  volumes:
+  - name: cache
+    path: /go
+  commands:
+  - env GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -a -installsuffix cgo -o bin/sdrd-linux-arm64 ./cmd/sdrd
+  - env GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -a -installsuffix cgo -o bin/sdr-linux-arm64 ./cmd/sdr
+
+- name: compile-armv6l
+  image: golang
+  depends_on:
+  - check
+  volumes:
+  - name: cache
+    path: /go
+  commands:
+  - env GOOS=linux GOARCH=arm GOARM=6 CGO_ENABLED=0 go build -a -installsuffix cgo -o bin/sdrd-linux-armv6l ./cmd/sdrd
+  - env GOOS=linux GOARCH=arm GOARM=6 CGO_ENABLED=0 go build -a -installsuffix cgo -o bin/sdr-linux-armv6l ./cmd/sdr
+
+- name: binary-release
+  image: plugins/gitea-release
+  depends_on:
+  - compile-amd64
+  - compile-arm64
+  - compile-armv6l
+  settings:
+    api_key:
+      from_secret: token
+    base_url: https://git.home.jm0.eu
+    files: bin/*
+  when:
+    event: tag
